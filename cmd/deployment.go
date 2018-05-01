@@ -31,7 +31,7 @@ type deployment struct {
 	Spec       spec                   `yaml:"spec"`
 }
 
-func transformDeployment(text string) {
+func transformDeployment(text string, graceful bool) {
 	requiredType := "Deployment"
 	annotation := "pod.beta.kubernetes.io/init-containers"
 	var d deployment
@@ -46,7 +46,10 @@ func transformDeployment(text string) {
 	}
 
 	containerAnnotation := d.Spec.Template.Metadata.Annotations[annotation]
-	if containerAnnotation == nil {
+	if containerAnnotation == nil && graceful {
+		fmt.Println(text)
+		return
+	} else if containerAnnotation == nil {
 		panic(fmt.Sprintf("Missing annotation '%s' on template metadata", annotation))
 	}
 
@@ -65,6 +68,8 @@ func transformDeployment(text string) {
 
 	fmt.Println(string(result))
 }
+
+var graceful bool
 
 var deploymentCmd = &cobra.Command{
 	Use:   "deployment",
@@ -86,10 +91,11 @@ var deploymentCmd = &cobra.Command{
 		}
 
 		text := inputBuffer.String()
-		transformDeployment(text)
+		transformDeployment(text, graceful)
 	},
 }
 
 func init() {
+	deploymentCmd.PersistentFlags().BoolVarP(&graceful, "graceful", "g", false, "fail gracefully")
 	rootCmd.AddCommand(deploymentCmd)
 }
